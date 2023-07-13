@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en-US" xmlns:th="http://www.thymeleaf.org">
+
+<head >
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title></title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            height: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+    <script src="/static/js/jquery-3.3.1.min.js"></script>
+    <script src="/static/js/qrcode.min.js"></script>
+</head>
+<body>
+<div class="contentDiv">
+    <h1>二维码测试</h1>
+    <!-- 一个数字输入框，输入金额 -->
+    <div class="btnDiv">
+        <input type="text" id="total" placeholder="请输入金额">
+        <input type="text" id="description" placeholder="请输入描述">
+        <!-- 一个按钮点击后发起请求根据结果生成二维码 -->
+        <button id="btn">生成二维码</button>
+    </div>
+    <div>
+        <input type="text" id="order" placeholder="请输入订单">
+        <!-- 一个按钮点击后发起请求根据结果生成二维码 -->
+        <button id="btnQuery">查询订单</button><button id="btnClose">关闭订单</button>
+    </div>
+    <div>
+        <input type="text" id="refundOrderId" placeholder="请输入订单号">
+        <input type="text" id="refundTotal" placeholder="请输入订单总价格">
+        <input type="text" id="refund" placeholder="请输入订单退款价格">
+        <!-- 一个按钮点击后发起请求根据结果生成二维码 -->
+        <button id="btnRefund">退款</button>
+    </div>
+    <div>
+        <input type="text" id="refundId" placeholder="请输入退款单号">
+        <!-- 一个按钮点击后发起请求根据结果生成二维码 -->
+        <button id="btnRefundQuery">查了退款状态</button>
+    </div>
+    <!-- 下方显示生成的二维码 -->
+    <div id="qrcode" class="qrDiv"></div>
+
+</div>
+</body>
+<style>
+    html, body, #app, .contentDiv {
+        height: 100%
+    }
+
+    .el-message-box {
+        width: 20rem;
+        z-index: 22222222 !important;
+    }
+    .contentDiv {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .btnDiv {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+    .qrDiv {
+        width: 300px;
+        height: 300px;
+        margin-top: 20px;
+    }
+
+
+
+</style>
+<script>
+    $(function(){
+        initQr();
+        $("#btnRefundQuery").click(function () {
+            refundQuery();
+        });
+        $("#btnQuery").click(function () {
+            queryMyOrder();
+        });
+        $("#btn").click(function () {
+            getQrUrl();
+        });
+        $("#btnClose").click(function () {
+            closeOrderId();
+        });
+        $("#btnRefund").click(function () {
+            refundOrderId();
+        });
+        function createQrcode(url) {
+            qrcode.makeCode(url);
+        }
+        var qrcode;
+        function initQr() {
+            qrcode  = new QRCode(document.getElementById("qrcode"), {
+                width : 300,//设置宽高
+                height : 300
+            });
+        }
+
+        // 得到二维码
+        function getQrUrl() {
+            var total = $("#total").val();
+            var description = $("#description").val();
+            let re=/^\d+(\.\d{0,2})?$/;
+            if (!re.test(total)){
+                alert("请输入大于0的正数,保留两位小数");
+                return;
+            }
+            $.ajax({
+                type: 'POST',
+                url: 'http://192.168.0.222:8976/wxpay/pay',
+                contentType: 'application/json',
+                dataType: 'json',
+                async: true,
+                data: JSON.stringify({"total":total,description:description}),
+                success: function (result) {
+                    if (result.status === 200 ) {
+                        createQrcode(result.result.url);
+                    } else {
+                        alert(result.msg);
+                    }
+                },
+            });
+        }
+
+        // 退款查询
+        function refundQuery() {
+            var refundId = $("#refundId").val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/wxpay/refundQuery',
+                contentType: 'application/json',
+                dataType: 'json',
+                async: true,
+                data: JSON.stringify({"refundId":refundId}),
+                success: function (result) {
+                    console.log(result)
+                    if (result.status === 200 ) {
+                        alert(result.result.status);
+                    } else {
+                        alert(result.msg);
+                    }
+                },
+            });
+        }
+        //退款
+        function refundOrderId() {
+            var orderId = $("#refundOrderId").val();
+            var total = $("#refundTotal").val();
+            var refund = $("#refund").val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/wxpay/refund',
+                contentType: 'application/json',
+                dataType: 'json',
+                async: true,
+                data: JSON.stringify({"orderId":orderId,"total":total,"refund":refund}),
+                success: function (result) {
+                    if (result.status === 200 ) {
+                        console.log(result.result)
+                        alert("退款成功")
+                    } else {
+                        alert(result.msg);
+                    }
+                },
+            });
+        }
+
+        //商户订单查询
+        function queryMyOrder() {
+            var orderId = $("#order").val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/wxpay/queryMyOrderId',
+                contentType: 'application/json',
+                dataType: 'json',
+                async: true,
+                data: JSON.stringify({"orderId":orderId}),
+                success: function (result) {
+                    if (result.status === 200 ) {
+                        alert(result.result.tradeStateDesc)
+                    } else {
+                        alert(result.msg);
+                    }
+                },
+            });
+        }
+        //关单
+        function closeOrderId() {
+            var orderId = $("#order").val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/wxpay/closeOrderId',
+                contentType: 'application/json',
+                dataType: 'json',
+                async: true,
+                data: JSON.stringify({"orderId":orderId}),
+                success: function (result) {
+                    if (result.status === 200 ) {
+                        alert(result.result.tradeStateDesc)
+                    } else {
+                        alert(result.msg);
+                    }
+                },
+            });
+        }
+    })
+
+</script>
+<style>
+</style>
+</html>
