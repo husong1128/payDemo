@@ -39,6 +39,7 @@ public class WXPayUtil {
    public final RefundService refundService;
 
     public WXPayUtil() {
+//        这里其实应该整合一下的，太乱了
         this.wxPayService = new WXPayService();
         this.nativePayService = wxPayService.getNativePayService();
         this.notificationParser  = wxPayService.getParse();
